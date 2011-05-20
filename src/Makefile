@@ -61,7 +61,7 @@ endif
 # * ****************************************** *
 
 $(SPRINT_OBJS) $(INTERFACE_OBJS) $(IMPLEMENTATION_OBJS) $(SHARED_ALGORITHM_OBJS) $(SHLIB_OBJS): %.o: %.c $(MAKEFILE)
-	$(MPICC) $(LOCAL_CFLAGS) -I$(R_HOME)/include -c -o $@ $<
+	$(MPICC) $(LOCAL_CFLAGS) -I$(R_INCLUDE_DIR) -c -o $@ $<
 
 
 # * ****************************** *
