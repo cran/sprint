@@ -29,14 +29,13 @@
 #include "functions.h"
 #include <R.h>
 #include <R_ext/Rdynload.h>
+#include <Rinterface.h>
 #include <Rembedded.h>
 
 extern commandFunction commandLUT[];
 static int mpi_init_flag = -1;
 
-void worker(int worldRank, int worldSize);
-
-SEXP AsInt (int n);
+void worker();
 
 /* *********************************************************** *
  *  Initialise MPI environment. "Borrowed" from Rmpi (Hao Yu)  *
@@ -76,9 +75,7 @@ void R_init_sprint(DllInfo *Dllinfo) {
 
         MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
         MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
-        if ( worldRank != 0 )
-            worker(worldRank, worldSize);
-        else {
+        if ( worldRank == 0 ) {
             MPI_Errhandler_set(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
             MPI_Errhandler_set(MPI_COMM_SELF, MPI_ERRORS_RETURN);
         }
@@ -110,18 +107,8 @@ SEXP sprint_shutdown() {
         mpi_init_flag = -1;
     }
 
-    return AsInt(1);
+    return ScalarInteger(1);
 }
-
-SEXP AsInt (int x)
-{
-    SEXP sexp_x;
-    PROTECT (sexp_x = allocVector (INTSXP, 1));
-    INTEGER (sexp_x)[0] = x;
-    UNPROTECT (1);
-    return sexp_x;
-}
-
 
 /* *************************************************************** *
  *                       Worker function                           *
@@ -133,11 +120,19 @@ SEXP AsInt (int x)
  *  They must sort that out themselves.                            *
  * *************************************************************** */
 
-void worker(int worldRank, int worldSize) {
+void worker() {
 
     enum commandCodes commandCode;
     int response;
+    int worldRank;
+    int worldSize;
 
+    MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+    MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
+
+    if ( worldRank == 0 ) {
+        return;
+    }
     /* Start the command processing loop */
 
     do {
@@ -179,7 +174,9 @@ void worker(int worldRank, int worldSize) {
 
     DEBUG("%i: End logging\n", worldRank);
 
-    exit(0);
+    R_CleanTempDir();
+
+    return;
 
 }
 
