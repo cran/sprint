@@ -90,15 +90,10 @@ int boot(int n, ...)
 
   if(worldRank == 0) {
 
-	    DEBUG("MPI is NOT init'ed in ptest\n");
-	    DEBUG("tmp from master: %d\n",tmp);
-	    DEBUG("ret from master: %d\n",ret);
-	    DEBUG("&combine_boot_results from master: ds\n",&combine_boot_results);
     reduce_combine(tmp, ret, &combine_boot_results, 0, MPI_COMM_WORLD);
 
   } else {
 
-	  DEBUG("tmp from slave: %s\n",tmp);
     reduce_combine(tmp, NULL, &combine_boot_results, 0, MPI_COMM_WORLD);
 
   }

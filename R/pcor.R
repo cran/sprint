@@ -1,7 +1,7 @@
 ##########################################################################
 #                                                                        #
 #  SPRINT: Simple Parallel R INTerface                                   #
-#  Copyright © 2008,2009 The University of Edinburgh                     #
+#  Copyright ï¿½ 2008,2009 The University of Edinburgh                     #
 #                                                                        #
 #  This program is free software: you can redistribute it and/or modify  #
 #  it under the terms of the GNU General Public License as published by  #
@@ -21,14 +21,6 @@
 # The R stub for the pcor function. This does some rudimentary
 # argument type checking and then hands off to the C stub.
 
-## consistent error / warning messages; could use for internationalization
-..msg <- list(error =
-              c(non.double = "x must be of type double",
-                non.numeric = "PCOR only accepts numeric matrices",
-                no.dims = "Dimensios of x and y matrices do not match"
-                ), warn = c()
-              )
-
 pcor <- function(
   data_x                       # input numerical matrix
 , data_y = NULL                # matrix with compatible dimensions to data_x.
@@ -38,13 +30,6 @@ pcor <- function(
 
 )
   {
-
-    # Load the "ff" package in case is not already loaded. Warn user in case the package is missing
-    if( !require("ff", quietly=TRUE) ) {
-        warning("Function pcor was unable to execute - failed to load package \"ff\". Please check that the package is installed and try again.")
-        return(NA)
-    }
-
     # we only work on doubles
     vmode_ = "double"
 
@@ -71,13 +56,13 @@ pcor <- function(
       length_ <- height * height
     }
     else
-      stop(..msg$error["non.numeric"])
+      stop(..sprintMsg$error["non.numeric"])
 
     if(!is.null(data_y)) {
       if (!is.matrix(data_y) && !is.numeric(data_y))
-        stop(..msg$error["non.numeric"])
+        stop(..sprintMsg$error["non.numeric"])
       if (dim(data_x)[0] != dim(data_y)[0] && dim(data_x)[1] != dim(data_y)[1])
-        stop(..msg$error["no.dims"])
+        stop(..sprintMsg$error["no.dims"])
     }
 
     if (is.null(caching_))
@@ -93,7 +78,13 @@ pcor <- function(
 
     # Call C interface
     return_val <- .Call("pcor", data_x, data_y, filename_, distance)
-
+	
+	colnames1 <- colnames(data_x)
+	if(is.null(data_y))
+	  colnames2 <- colnames(data_x)
+	else
+	  colnames2 <- colnames(data_y)
+	  
     # Return values from the interface have meaning.
     #  0    -->     success
     # -1    -->     MPI is not initialized
@@ -101,7 +92,8 @@ pcor <- function(
     if ( return_val == 0 ) {
       # Open result binary file and return as ff object
       result = ff(
-        dim=c(height,height)
+        dim=c(height,height),
+		dimnames=list(colnames1,colnames2),
         , filename=filename_
         , vmode=vmode_
         , caching=caching_

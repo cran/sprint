@@ -1,7 +1,7 @@
 /**************************************************************************
  *                                                                        *
  *  SPRINT: Simple Parallel R INTerface                                   *
- *  Copyright © 2008,2009 The University of Edinburgh                     *
+ *  Copyright ? 2008,2009 The University of Edinburgh                     *
  *                                                                        *
  *  This program is free software: you can redistribute it and/or modify  *
  *  it under the terms of the GNU General Public License as published by  *
@@ -44,13 +44,21 @@ void R_init_sprint(DllInfo *Dllinfo) {
 
     int worldSize, worldRank;
     int flag;
-
+    char *dlhandle;
     static int fake_argc = 1;
     char *fake_argv[1];
     char *fake_argv0 = "R";
     int response;
+    
+  /* #work around for openMPI on some Linux versions. If this fails to work there will be dll errors.*/
 #ifdef OPEN_MPI
-    void *dlhandle;
+  #if defined(__unix__) 
+        dlhandle = dlopen("libmpi.so", RTLD_GLOBAL | RTLD_LAZY);
+        if ( NULL == dlhandle ) {
+            ERR("Failed to open libmpi.so library. %s\n", dlerror());
+            return;
+        }
+  #endif
 #endif
 
     MPI_Initialized(&flag);
@@ -59,17 +67,9 @@ void R_init_sprint(DllInfo *Dllinfo) {
         return;
     }
     else {
-
-#ifdef OPEN_MPI
-        dlhandle = dlopen("libmpi.so.0", RTLD_GLOBAL | RTLD_LAZY);
-        if ( NULL == dlhandle ) {
-            ERR("%s\n", dlerror());
-            return;
-        }
-#endif
-
         fake_argv[0] = (char *)&fake_argv0;
-        MPI_Init_thread(&fake_argc, (char ***)(void*)&fake_argv , MPI_THREAD_SERIALIZED, &response);
+        MPI_Init_thread(&fake_argc, (char ***)(void*)&fake_argv , MPI_THREAD_SERIALIZED, &response); 
+        //MPI_Init(&fake_argc, (char ***)(void*)&fake_argv);
         DEBUG("%i: Starting up\n", worldRank);
         mpi_init_flag = 1;
 
@@ -89,7 +89,7 @@ void R_init_sprint(DllInfo *Dllinfo) {
  *  Called only by the master thread when pterminate() function is called  *
  * *********************************************************************** */
 SEXP sprint_shutdown() {
-    int worldRank;
+    int worldRank,intCode;
     enum commandCodes commandCode;
 
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
@@ -97,8 +97,9 @@ SEXP sprint_shutdown() {
 
         // Send terminate command
         commandCode = TERMINATE;
+        intCode = (int)commandCode;
         DEBUG("%i: Shutting down %i\n", worldRank, commandCode);
-        MPI_Bcast(&commandCode, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&intCode, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
         // Sprint should now do the finalize
         MPI_Finalize();
@@ -123,6 +124,7 @@ SEXP sprint_shutdown() {
 SEXP worker() {
 
     enum commandCodes commandCode;
+    int intCode; // Need to pass int in MPI_Bcast instead of enum
     int response;
     int worldRank;
     int worldSize;
@@ -139,7 +141,10 @@ SEXP worker() {
 
         // this matches the broadcast in interface/algorithm.c which is executed on rank 0
         // via R. All the rest of the processors should wait here
-        MPI_Bcast(&commandCode, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+        intCode = (int)commandCode;
+        MPI_Bcast(&intCode, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        commandCode = intCode;
 
         DEBUG("%i: Receiving command %i\n", worldRank, commandCode);
         /* Process the command */
@@ -174,7 +179,8 @@ SEXP worker() {
 
     DEBUG("%i: End logging\n", worldRank);
 
-    R_CleanTempDir();
+    /* There used to be a call to R_CleanTempDir() here, but the temp dirs are
+    cleaned automatically by R without this call (which fails the CRAN checks). */
 
     // Return the MPI rank of the process. This value is needed in R
     // to identify the 'worker' MPI processes and handle their shutdown.

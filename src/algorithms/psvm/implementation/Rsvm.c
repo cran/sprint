@@ -5,6 +5,9 @@
 #include "svm.h"
 #include <mpi.h>
 #include "Rsvm.h"
+#include <math.h>
+#include <R.h>
+#include <Rmath.h>  // for random number generation.
 #define Malloc(type,n) (type *)malloc((n)*sizeof(type))
 
 /*
@@ -20,7 +23,7 @@ struct crossresults
 
 void foote(int a){
   int n = returnFoo(a);
-  printf("I am foote %i\n", n);
+  Rprintf("I am foote %i\n", n);
 }
 
 struct svm_node ** sparsify (double *x, int r, int c)
@@ -93,9 +96,12 @@ void do_cross_validation(struct svm_problem *prob,
   double sumv = 0, sumy = 0, sumvv = 0, sumyy = 0, sumvy = 0;
 
   /* random shuffle */
+  
+// TODO  GetRNGstate(); // initialise randomisation
   for( i = 0; i < prob->l; i++ )
     {
       int j = i + rand() % (prob->l - i);
+     //TODO  int j = i + (runif(0.0,  (prob->l - i))/1); // Have replaced a call to rand() with a call to the R implementation runif(). TODO test this.
       struct svm_node *tx;
       double ty;
 
@@ -108,6 +114,8 @@ void do_cross_validation(struct svm_problem *prob,
       prob->y[j] = ty;
     }
 
+ // TODO PutRNGstate(); // end randomisation
+  
   for( i = 0; i < nr_fold; i++ )
     {
       int begin = i * prob->l / nr_fold;
@@ -288,9 +296,15 @@ void svmtrain (double *x, int *r, int *c,
     //only root needs to do it
     if(rank == 0){
       
+//TODO      GetRNGstate(); // initialise R randomisation - rand fix 
+      
       /* set seed */
-      srand(*seed);
+      srand(*seed);  // Original rand code
+     //TODO srand alternative
+     // *seed = (runif(0.0, (INT_MAX))/1) ; // TODO test this.
 
+  //TODO    PutRNGstate(); // end R randomisation - rand fix
+      
       /* call svm_train */
       model = svm_train(&prob, &par);
 
@@ -547,9 +561,12 @@ void do_cross_validation_in_parallel(struct svm_problem *prob,
   //only root knows this params
   if(rank == 0){
     /* random shuffle */
+    // GetRNGstate(); // TODO rand fix
     for( i = 0; i < prob->l; i++ )
       {
         int j = i + rand() % (prob->l - i);
+       // int j = i + (runif(0.0,  (prob->l - i))/1); // Have replaced a call to rand() with a call to the R implementation runif(). TODO test this.
+        
         struct svm_node *tx;
         double ty;
 
@@ -561,8 +578,8 @@ void do_cross_validation_in_parallel(struct svm_problem *prob,
         prob->y[i] = prob->y[j];
         prob->y[j] = ty;
       }
-
   }
+  // PutRNGstate(); // TODO rand fix.
   for( i = 0; i < nr_fold; i++ )
     {
       localres[i] = 0.0;

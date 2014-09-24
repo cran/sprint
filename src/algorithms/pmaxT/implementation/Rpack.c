@@ -63,7 +63,7 @@ void create_gene_data(double *d, int *pnrow, int *pncol, int *L, double *pna, GE
 
     for (i=0; i<pdata->nrow; i++) {
         // Used for the indexes
-        if(PrintIDX)
+       if(PrintIDX)
             sprintf(pdata->id[i], "%d", i+1); 
         else
             sprintf(pdata->id[i], "0");

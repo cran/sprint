@@ -18,28 +18,22 @@
 #                                                                        #
 ##########################################################################
 
-## Ensure consistent "diss.." class --- make "namespace-private-global !
+## Ensure consistent "diss.." class --- make "namespace-private-global" !
 dissiCl <- c("dissimilarity", "dist")
-
-## consistent error / warning messages; could use for internationalization
-..msg <- list(error =
-              c(non.double = "x must be of type double",
-                non.square = "x is not and cannot be converted to a square matrix",
-                non.ff = "x must be a valid ff object",
-                no.valid.k = "Number of clusters `k' must be in {1,2, .., n-1}; hence n >= 2",
-                no.filename = "The filename of the ff object cannot be read"
-                ), warn = c()
-              )
 
 ppam <- function(x, k, medoids = NULL, is_dist = inherits(x, "dist"),
                  cluster.only = FALSE, do.swap = TRUE, trace.lev = 0)
-{
-  
+{	
+	if (is_dist){
+		xLab <- attr(x, "Labels")
+	}else{
+		xLab <- rownames(x)}
+	
   # === CHECK DISTANCE DATA INPUT === #
   if(is.ff(x)) {
     ## check type of input ff object
     if(vmode(x) != "double")
-      stop(..msg$error["non.square"])
+      stop(..sprintMsg$error["non.square"])
     
     if(data.class(x) != "ff_matrix") {
       length_x <- attr(attr(x, "virtual"), "Length")
@@ -47,20 +41,20 @@ ppam <- function(x, k, medoids = NULL, is_dist = inherits(x, "dist"),
       
       # check if the vector can form a square matrix
       if (length_x %% n_rows)
-        stop(..msg$error["non.square"])
+        stop(..sprintMsg$error["non.square"])
     } else {
       n_rows = dim.ff(x)[1]
       if (dim.ff(x)[1] != dim.ff(x)[2]) {
-        stop(..msg$error["non.square"])
+        stop(..sprintMsg$error["non.square"])
       }
     }
     filename = attr(attr(x, "physical"), "filename")
     if (!is.character(filename)) {
-      stop(..msg$error["no.filename"])
+      stop(..sprintMsg$error["no.filename"])
     }
     
     MAP_FILE= TRUE
-    x = NULL
+	  x = 0;
 
   } else {
     
@@ -76,9 +70,9 @@ ppam <- function(x, k, medoids = NULL, is_dist = inherits(x, "dist"),
   }
   
   if((k <- as.integer(k)) < 1 || k >= n_rows)
-    stop(..msg$err["no.valid.k"])
-  if(is.null(medoids))# default: using "build & swap" to determine medoids"
-    medID <- integer(k)# all 0 -> will be used as `code' in C
+    stop(..sprintMsg$err["no.valid.k"])
+  if(is.null(medoids))# default: using "build & swap to determine medoids"
+    medID <- integer(k)# all 0 -> will be used as 'code' in C
   else {
     ## 'fixme': consider  sort(medoids) {and rely on it in ../src/pam.c }
     if(length(medID <- as.integer(medoids)) != k ||
@@ -104,7 +98,7 @@ ppam <- function(x, k, medoids = NULL, is_dist = inherits(x, "dist"),
 	      integer(if(cluster.only) 1 else n_rows), # nelem[]
 	      double(n_rows),		# radus[]
 	      double(n_rows),		# damer[]
-	      avsil = double(n_rows),	# `ttd'
+	      avsil = double(n_rows),	# 'ttd'
 	      double(n_rows),		# separ[]
 	      ttsil = as.double(0),
 	      obj = as.double(c(cluster.only, trace.lev)),# in & out!
@@ -119,9 +113,7 @@ ppam <- function(x, k, medoids = NULL, is_dist = inherits(x, "dist"),
   res$silinf[,1] = res$silinf[,1] + 1
   res$silinf[,2] = res$silinf[,2] + 1
   res$silinf[,4] = res$silinf[,4] + 1
-
-  xLab <- dimnames(x)[[1]]
-
+	
   if(length(xLab) > 0)
       names(res$clu) <- xLab
   if(cluster.only)
@@ -132,7 +124,15 @@ ppam <- function(x, k, medoids = NULL, is_dist = inherits(x, "dist"),
   if(any(medID < 0))
     stop("error from .C(\"ppam\", *): invalid medID's")
   sildim <- res$silinf[, 4]
-
+	
+# Return medoid dimnames if they exist
+	if(length(xLab) > 0){
+		res$med <- names(res$clu[medID])
+	}
+	else{
+		res$med = medID
+	}
+	
   ## add dimnames to Fortran output
   names(res$obj) <- c("build", "swap")
   res$isol <- factor(res$isol, levels = 0:2, labels = c("no", "L", "L*"))
@@ -142,7 +142,7 @@ ppam <- function(x, k, medoids = NULL, is_dist = inherits(x, "dist"),
   
   ## construct S object
   r <-
-    list(medoids = res$med+1, id.med = medID, clustering = res$clu,
+    list(medoids = res$med, id.med = medID, clustering = res$clu,
          objective = res$obj, isolation = res$isol,
          clusinfo = res$clusinf,
          silinfo = if(k != 1) {

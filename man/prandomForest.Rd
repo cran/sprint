@@ -9,6 +9,11 @@ dataset in parallel. The random forest algorithm can be used to classify both
 categorical and continuous variables. This function provides a parallel 
 equivalent to the serial randomForest() function from the randomForest 
 package. 
+Note that the randomForest library must be loaded before calling the prandomForest function. 
+library("randomForest")
+
+N.B. Please see the SPRINT User Guide for how to run the code in parallel 
+using the mpiexec command.
 } 
 \usage{
 prandomForest(x, ...)

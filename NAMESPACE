@@ -3,7 +3,7 @@
 useDynLib(sprint)
 
 export(ptest)
-export(psvm)
+#export(psvm)
 export(pcor)
 export(pmaxT)
 export(pterminate)
@@ -16,7 +16,7 @@ export(pRP)
 export(pRPadvance)
 export(pRS)
 export(pRSadvance)
-export(phamming.distance)
+export(pstringdistmatrix)
 
 ## generics
 S3method(print, pam)
@@ -28,3 +28,8 @@ S3method(prandomForest, default)
 export(init.rng)
 export(reset.rng)
 export(.Last.lib)
+
+import(ff)
+import(randomForest)
+import(rlecuyer)
+import(e1071)
